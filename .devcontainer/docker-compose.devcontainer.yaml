@@ -1,12 +1,14 @@
-version: '3'
-
 services:
   workspace:
     build:
       context: .
+      dockerfile: ./.devcontainer/Dockerfile
     volumes:
       - ..:/workspaces/raindrop-sync-chrome
       - google-chrome:/home/node/.config/google-chrome/Default
+    environment:
+      CONTAINER: 1
+      DISPLAY: ${DISPLAY:-novnc:0.0}
     healthcheck:
       disable: true
     cap_add:
@@ -14,11 +16,12 @@ services:
     shm_size: 2gb
 
   novnc:
-    image: theasp/novnc:latest
+    image: theasp/novnc@sha256:baef5751fdf8416f4729c5cb09ff565b6eabf6079e1919e9aab71eecf1824eac
+    profiles:
+      - novnc
     environment:
       DISPLAY_WIDTH: '${NOVNC_DISPLAY_WIDTH:-1600}'
       DISPLAY_HEIGHT: '${NOVNC_DISPLAY_HEIGHT:-968}'
-      RUN_XTERM: 'no'
     ports:
       - ${NOVNC_HOST:-127.0.0.1}:${NOVNC_PORT:-8080}:8080
 

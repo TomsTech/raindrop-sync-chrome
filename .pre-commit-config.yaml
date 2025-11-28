@@ -13,29 +13,22 @@ repos:
 
   - repo: local
     hooks:
-      - id: generate
-        name: Generate stubs and codes
-        language: system
-        types_or: [javascript, ts, json, directory]
-        pass_filenames: false
-        entry: make generate
-
       - id: prettier
-        name: Format with Prettier
+        name: prettier
         language: system
         types_or: [javascript, ts, svelte, json]
         entry: yarn run prettier
         args: [--write]
 
       - id: eslint
-        name: Lint with ESLint
+        name: eslint
         language: system
         types_or: [javascript, ts, svelte]
         entry: yarn run eslint
         args: [--fix]
 
       - id: typescript
-        name: Type check with TypeScript
+        name: typescript
         language: system
         types_or: [javascript, ts, svelte]
         pass_filenames: false
@@ -43,7 +36,7 @@ repos:
         args: [--noEmit]
 
       - id: vitest
-        name: Run tests with Vitest
+        name: vitest
         language: system
         types_or: [javascript, ts, svelte]
         pass_filenames: false
