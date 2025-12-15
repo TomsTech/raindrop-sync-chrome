@@ -1,0 +1,1 @@
+export { ChromeBookmarkRepository } from './repository';
