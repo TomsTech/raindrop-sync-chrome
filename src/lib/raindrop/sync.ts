@@ -29,7 +29,7 @@ export class RaindropNodeData extends NodeData {
 
 	getParentId(): string | null {
 		const parentId: string | null =
-			// @ts-expect-error Multi-type handling
+			// @ts-expect-error Multi-type handling; consider type guards
 			this.rawData.parent?.$id.toString() || this.rawData.collection?.$id.toString() || null;
 
 		// ? Root for raindrops is -1 (unsorted) if it does not belong to any collection
@@ -39,6 +39,15 @@ export class RaindropNodeData extends NodeData {
 		}
 
 		return parentId;
+	}
+
+	getUrl(): string | null {
+		// @ts-expect-error Multi-type handling
+		return this.rawData.link || null;
+	}
+
+	isFolder(): boolean {
+		return !Object.hasOwn(this.rawData, 'link');
 	}
 }
 

@@ -19,6 +19,14 @@ export class ChromeBookmarkNodeData extends NodeData {
 	getParentId(): string | null {
 		return this.rawData.parentId || null;
 	}
+
+	getUrl(): string | null {
+		return this.rawData.url || null;
+	}
+
+	isFolder(): boolean {
+		return !this.rawData.url;
+	}
 }
 
 /**

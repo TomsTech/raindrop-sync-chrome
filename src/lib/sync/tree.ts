@@ -3,6 +3,8 @@ export abstract class NodeData {
 	abstract getId(): string;
 	abstract getName(): string;
 	abstract getParentId(): string | null;
+	abstract getUrl(): string | null;
+	abstract isFolder(): boolean;
 }
 
 /** Callback function for tree traversal. */
