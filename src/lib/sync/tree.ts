@@ -1,8 +1,8 @@
 /** Abstraction for required functionality of raw source data types. */
 export abstract class NodeData {
 	abstract getId(): string;
-	abstract getName(): string;
 	abstract getParentId(): string | null;
+	abstract getName(): string;
 	abstract getUrl(): string | null;
 	abstract isFolder(): boolean;
 }
@@ -74,8 +74,15 @@ export class TreeNode<D extends NodeData> {
 		return rootNode;
 	}
 
-	getName() {
-		return this.data?.getName() ?? '';
+	getName(): string | null {
+		if (this.isRoot()) {
+			return '/';
+		}
+		return this.data?.getName() ?? null;
+	}
+
+	getUrl(): string | null {
+		return this.data?.getUrl() ?? null;
 	}
 
 	getFullPath(): string {
@@ -85,10 +92,22 @@ export class TreeNode<D extends NodeData> {
 		let currentNode: TreeNode<D> | null = this;
 
 		while (currentNode) {
-			segments.unshift(currentNode.getName());
+			segments.unshift(currentNode.getName() || '');
 			currentNode = currentNode.parent;
 		}
 		return '/' + segments.join('/');
+	}
+
+	isRoot(): boolean {
+		return this.parent === null;
+	}
+
+	isFolder(): boolean {
+		return this.data?.isFolder() || this.isRoot();
+	}
+
+	isTerminal(): boolean {
+		return this.children.length === 0;
 	}
 
 	addChild(child: TreeNode<D>) {
@@ -97,10 +116,6 @@ export class TreeNode<D extends NodeData> {
 
 	removeChild(child: TreeNode<D>) {
 		this.children = this.children.filter((c) => c !== child);
-	}
-
-	isTerminal(): boolean {
-		return this.children.length === 0;
 	}
 
 	dfs(callback: TraversalCallback<TreeNode<D>>) {

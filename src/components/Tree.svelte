@@ -5,13 +5,16 @@
 	export let treeNode: TreeNode<T>;
 	export let collapsed: boolean = true;
 
-	let href: string | null = treeNode.data?.getUrl() || null;
-	let nodeTitle: string = treeNode.data?.getName() || '/';
-	let childCount: number = treeNode.children.length;
+	let isFolder: boolean;
+	let href: string | null;
+	let nodeTitle: string;
+	let childCount: number;
 
+	console.log(treeNode);
 	$: {
-		href = treeNode.data?.getUrl() || null;
-		nodeTitle = treeNode.data?.getName() || '/';
+		isFolder = treeNode.isFolder();
+		href = treeNode.getUrl();
+		nodeTitle = treeNode.getName() || '';
 		childCount = treeNode.children.length;
 	}
 
@@ -21,7 +24,7 @@
 </script>
 
 <div class="leading-relaxed">
-	{#if treeNode.data?.isFolder()}
+	{#if isFolder}
 		<div class="inline-flex items-center gap-1.5">
 			{#if treeNode.children.length > 0}
 				<button

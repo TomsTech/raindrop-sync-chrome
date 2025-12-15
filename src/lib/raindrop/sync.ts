@@ -19,12 +19,9 @@ export class RaindropNodeData extends NodeData {
 		this.rawData = data;
 	}
 
+	// Raindrop.io internal ID
 	getId(): string {
 		return this.rawData._id.toString();
-	}
-
-	getName(): string {
-		return this.rawData.title;
 	}
 
 	getParentId(): string | null {
@@ -40,6 +37,9 @@ export class RaindropNodeData extends NodeData {
 
 		return parentId;
 	}
+	getName(): string {
+		return this.rawData.title;
+	}
 
 	getUrl(): string | null {
 		// @ts-expect-error Multi-type handling
@@ -47,7 +47,7 @@ export class RaindropNodeData extends NodeData {
 	}
 
 	isFolder(): boolean {
-		return !Object.hasOwn(this.rawData, 'link');
+		return this.rawData && !Object.hasOwn(this.rawData, 'link');
 	}
 }
 

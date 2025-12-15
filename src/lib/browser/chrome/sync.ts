@@ -8,16 +8,17 @@ export class ChromeBookmarkNodeData extends NodeData {
 		this.rawData = data;
 	}
 
+	// Chrome bookmark internal ID
 	getId(): string {
 		return this.rawData.id;
 	}
 
-	getName(): string {
-		return this.rawData.title;
-	}
-
 	getParentId(): string | null {
 		return this.rawData.parentId || null;
+	}
+
+	getName(): string {
+		return this.rawData.title;
 	}
 
 	getUrl(): string | null {
