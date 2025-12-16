@@ -44,20 +44,20 @@ export class SyncManager {
 		this.raindropClient = opts.raindropClient;
 	}
 
-	addListener(observer: SyncEventListener) {
-		console.debug('Attaching a new observer to sync manager');
-		this.listeners.push(observer);
+	addListener(listener: SyncEventListener) {
+		console.debug('Attaching a new listener to sync manager');
+		this.listeners.push(listener);
 	}
 
-	removeListener(observer: SyncEventListener) {
-		console.debug('Detaching a observer from sync manager');
-		this.listeners = this.listeners.filter((obs) => obs !== observer);
+	removeListener(listener: SyncEventListener) {
+		console.debug('Detaching a listener from sync manager');
+		this.listeners = this.listeners.filter((obs) => obs !== listener);
 	}
 
 	emitEvent(event: SyncEvent) {
-		console.debug(`Notifying observers of sync event: ${event}`);
-		for (const observer of this.listeners) {
-			observer.onEvent(event);
+		console.debug(`Notifying listeners of sync event: ${event}`);
+		for (const listener of this.listeners) {
+			listener.onEvent(event);
 		}
 	}
 
