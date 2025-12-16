@@ -1,21 +1,32 @@
 <script lang="ts">
-	import { Button, P, Spinner } from 'flowbite-svelte';
+	import { Accordion, AccordionItem, Button, P, Spinner } from 'flowbite-svelte';
+	import {
+		CheckCircleSolid,
+		CircleMinusSolid,
+		CirclePlusSolid,
+		ExclamationCircleSolid
+	} from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
+	import PathBreadcrumb from '~/components/PathBreadcrumb.svelte';
 	import Tree from '~/components/Tree.svelte';
 	import type { ChromeBookmarkNodeData } from '~/lib/browser/chrome';
 	import { createTreeFromChromeBookmarks } from '~/lib/browser/chrome';
-	import rd, { createTreeFromRaindrops, RaindropNodeData } from '~/lib/raindrop';
-	import type { TreeNode } from '~/lib/sync/tree';
+	import { createTreeFromRaindrops, RaindropNodeData } from '~/lib/raindrop';
+	import type { TreeNode } from '~/lib/sync';
+	import syncManager, { SyncDiff } from '~/lib/sync';
 
-	let raindropTree: TreeNode<RaindropNodeData>;
+	let raindropTree: TreeNode<RaindropNodeData> | null = null;
 	let isFetchingRaindrops = false;
-	let chromeBookmarkTree: TreeNode<ChromeBookmarkNodeData>;
+	let chromeBookmarkTree: TreeNode<ChromeBookmarkNodeData> | null = null;
 	let isFetchingChrome = false;
+	let syncDiff: SyncDiff<RaindropNodeData, ChromeBookmarkNodeData> | null = null;
+	let isCalculatingDiff = false;
 
 	const makeRaindropBookmarkTree = async () => {
 		isFetchingRaindrops = true;
 		try {
-			raindropTree = await createTreeFromRaindrops(rd);
+			// TODO: Bad access to protected attributes -- need refactor
+			raindropTree = await createTreeFromRaindrops(syncManager.raindropClient);
 		} finally {
 			isFetchingRaindrops = false;
 		}
@@ -27,6 +38,18 @@
 			chromeBookmarkTree = await createTreeFromChromeBookmarks();
 		} finally {
 			isFetchingChrome = false;
+		}
+	};
+
+	const calculateSyncDiff = async () => {
+		if (!raindropTree || !chromeBookmarkTree) {
+			return;
+		}
+		isCalculatingDiff = true;
+		try {
+			syncDiff = await syncManager.calculateSyncDiff(raindropTree);
+		} finally {
+			isCalculatingDiff = false;
 		}
 	};
 
@@ -49,11 +72,11 @@
 				</Button>
 			</div>
 			{#if raindropTree}
-				<div class="max-h-[600px] overflow-y-auto">
+				<div class="min-h-[300px] overflow-y-auto">
 					<Tree treeNode={raindropTree} collapsed={false}></Tree>
 				</div>
 			{:else}
-				<div class="flex h-[300px] items-center justify-center">
+				<div class="flex min-h-[300px] items-center justify-center">
 					<P class="text-gray-500 italic">Waiting for data...</P>
 				</div>
 			{/if}
@@ -62,21 +85,158 @@
 			<div class="mb-4 flex items-center justify-between">
 				<P class="font-semibold text-gray-800">Chrome Bookmarks</P>
 				<Button size="xs" outline onclick={makeChromeBookmarkTree} disabled={isFetchingChrome}>
-					{#if isFetchingChrome}
-						<Spinner size="4" class="mr-1" />
-					{/if}
 					Reload
 				</Button>
 			</div>
 			{#if chromeBookmarkTree}
-				<div class="max-h-[600px] overflow-y-auto">
+				<div class="min-h-[300px] overflow-y-auto">
+					<!-- TODO: I want the chrome bookmark to show its full parent path as root; e.g.: /Bookmarks bar/child instead of / -->
 					<Tree treeNode={chromeBookmarkTree} collapsed={false}></Tree>
 				</div>
 			{:else}
-				<div class="flex h-[300px] items-center justify-center">
+				<div class="flex min-h-[300px] items-center justify-center">
 					<P class="text-gray-500 italic">Waiting for data...</P>
 				</div>
 			{/if}
 		</div>
+	</div>
+
+	<div class="mt-6 rounded-lg border border-gray-200 bg-white p-4">
+		<div class="mb-4 flex items-center justify-between">
+			<P class="font-semibold text-gray-800">Sync Differences</P>
+			<Button
+				size="xs"
+				outline
+				onclick={calculateSyncDiff}
+				disabled={isCalculatingDiff || !raindropTree || !chromeBookmarkTree}
+			>
+				Calculate
+			</Button>
+		</div>
+		{#if syncDiff}
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				<!-- Add (Only in Raindrop) -->
+				<div class="rounded-lg border border-green-200 bg-green-50 p-3">
+					<div class="mb-2 flex items-center gap-2">
+						<CirclePlusSolid class="text-green-600" size="sm" />
+						<P class="font-medium text-green-800">Add</P>
+					</div>
+					<P class="text-2xl font-bold text-green-600">{syncDiff.onlyInLeft.length}</P>
+					<P class="mb-3 text-sm text-green-700">Items to be added</P>
+					<Accordion>
+						<AccordionItem>
+							{#snippet header()}
+								<div class="text-sm font-medium text-green-800">
+									View details ({syncDiff!.onlyInLeft.length} items)
+								</div>
+							{/snippet}
+							{#if syncDiff.onlyInLeft.length > 0}
+								<div class="max-h-[300px] space-y-2 overflow-y-auto">
+									{#each syncDiff.onlyInLeft as node (node.getId())}
+										<PathBreadcrumb {node} />
+									{/each}
+								</div>
+							{:else}
+								<P class="text-sm text-gray-500 italic">No items to add</P>
+							{/if}
+						</AccordionItem>
+					</Accordion>
+				</div>
+
+				<!-- Remove (Only in Chrome) -->
+				<div class="rounded-lg border border-red-200 bg-red-50 p-3">
+					<div class="mb-2 flex items-center gap-2">
+						<CircleMinusSolid class="text-red-600" size="sm" />
+						<P class="font-medium text-red-800">Remove</P>
+					</div>
+					<P class="text-2xl font-bold text-red-600">{syncDiff.onlyInRight.length}</P>
+					<P class="mb-3 text-sm text-red-700">Items to be removed</P>
+					<Accordion>
+						<AccordionItem>
+							{#snippet header()}
+								<div class="text-sm font-medium text-red-800">
+									View details ({syncDiff!.onlyInRight.length} items)
+								</div>
+							{/snippet}
+							{#if syncDiff.onlyInRight.length > 0}
+								<div class="max-h-[300px] space-y-2 overflow-y-auto">
+									{#each syncDiff.onlyInRight as node (node.getId())}
+										<PathBreadcrumb {node} />
+									{/each}
+								</div>
+							{:else}
+								<P class="text-sm text-gray-500 italic">No items to remove</P>
+							{/if}
+						</AccordionItem>
+					</Accordion>
+				</div>
+
+				<!-- Update (Different) -->
+				<div class="rounded-lg border border-orange-200 bg-orange-50 p-3">
+					<div class="mb-2 flex items-center gap-2">
+						<ExclamationCircleSolid class="text-orange-600" size="sm" />
+						<P class="font-medium text-orange-800">Update</P>
+					</div>
+					<P class="text-2xl font-bold text-orange-600">{syncDiff.inBothButDifferent.length}</P>
+					<P class="mb-3 text-sm text-orange-700">Items to be updated</P>
+					<Accordion>
+						<AccordionItem>
+							{#snippet header()}
+								<div class="text-sm font-medium text-orange-800">
+									View details ({syncDiff!.inBothButDifferent.length} items)
+								</div>
+							{/snippet}
+							{#if syncDiff.inBothButDifferent.length > 0}
+								<div class="max-h-[300px] space-y-2 overflow-y-auto">
+									{#each syncDiff.inBothButDifferent as pair ((pair.left.getId(), pair.right.getId()))}
+										<PathBreadcrumb node={pair.left} />
+									{/each}
+								</div>
+							{:else}
+								<P class="text-sm text-gray-500 italic">No items to update</P>
+							{/if}
+						</AccordionItem>
+					</Accordion>
+				</div>
+
+				<!-- No Change (Unchanged) -->
+				<div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+					<div class="mb-2 flex items-center gap-2">
+						<CheckCircleSolid class="text-gray-600" size="sm" />
+						<P class="font-medium text-gray-800">No Change</P>
+					</div>
+					<P class="text-2xl font-bold text-gray-600">{syncDiff.unchanged.length}</P>
+					<P class="mb-3 text-sm text-gray-700">Items unchanged</P>
+					<Accordion>
+						<AccordionItem>
+							{#snippet header()}
+								<div class="text-sm font-medium text-gray-800">
+									View details ({syncDiff!.unchanged.length} items)
+								</div>
+							{/snippet}
+							{#if syncDiff.unchanged.length > 0}
+								<div class="max-h-[300px] space-y-2 overflow-y-auto">
+									{#each syncDiff.unchanged as pair ((pair.left.getId(), pair.right.getId()))}
+										<PathBreadcrumb node={pair.left} />
+									{/each}
+								</div>
+							{:else}
+								<P class="text-sm text-gray-500 italic">No unchanged items</P>
+							{/if}
+						</AccordionItem>
+					</Accordion>
+				</div>
+			</div>
+		{:else}
+			<div class="flex min-h-[120px] items-center justify-center">
+				<P class="text-gray-500 italic">
+					{#if !raindropTree || !chromeBookmarkTree}
+						Please fetch both Raindrop.io and Chrome bookmarks first
+					{:else}
+						Click "Calculate" to see sync differences
+					{/if}
+				</P>
+			</div>
+		{/if}
 	</div>
 </div>

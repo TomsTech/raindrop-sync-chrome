@@ -1,7 +1,12 @@
 import { client } from '@lasuillard/raindrop-client';
 import { get } from 'svelte/store';
 import type { AppSettings } from '~/config/settings';
-import { ChromeBookmarkRepository } from '~/lib/browser/chrome';
+import {
+	ChromeBookmarkNodeData,
+	ChromeBookmarkRepository,
+	createTreeFromChromeBookmarks
+} from '~/lib/browser/chrome';
+import type { RaindropNodeData } from '~/lib/raindrop';
 import type { SyncEvent, SyncEventListener } from './event-listener';
 import {
 	SyncEventComplete,
@@ -9,6 +14,8 @@ import {
 	SyncEventProgress,
 	SyncEventStart
 } from './event-listener';
+import { SyncDiff } from './plan';
+import { TreeNode } from './tree';
 
 /**
  * Manages synchronization between Raindrop.io and browser bookmarks.
@@ -126,6 +133,20 @@ export class SyncManager {
 				` which is ${serverLastUpdate > lastSync ? 'after' : 'before'} last sync (${lastSync.toISOString()}).`
 		);
 		return serverLastUpdate > lastSync;
+	}
+
+	/**
+	 * Calculate the sync difference between Raindrop.io collections and Chrome bookmarks.
+	 * @param raindropTree The Raindrop.io collection tree.
+	 * @returns The calculated SyncDiff object.
+	 */
+	async calculateSyncDiff(
+		raindropTree: TreeNode<RaindropNodeData>
+	): Promise<SyncDiff<RaindropNodeData, ChromeBookmarkNodeData>> {
+		const syncLocation = get(this.appSettings.syncLocation);
+		const base = await this.repository.getFolderById(syncLocation);
+		const chromeBookmarks = await createTreeFromChromeBookmarks(base);
+		return SyncDiff.calculateDiff(raindropTree, chromeBookmarks);
 	}
 
 	protected async performSync() {

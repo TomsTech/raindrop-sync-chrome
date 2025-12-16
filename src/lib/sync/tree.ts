@@ -83,6 +83,10 @@ export class TreeNode<D extends NodeData> {
 		return rootNode;
 	}
 
+	getId(): string {
+		return this.data?.getId() ?? Math.random().toString();
+	}
+
 	getName(): string | null {
 		if (this.isRoot()) {
 			return '/';
@@ -94,7 +98,7 @@ export class TreeNode<D extends NodeData> {
 		return this.data?.getUrl() ?? null;
 	}
 
-	getFullPath(): string {
+	getFullPathSegments(): string[] {
 		const segments: string[] = [];
 
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -104,7 +108,11 @@ export class TreeNode<D extends NodeData> {
 			segments.unshift(currentNode.getName() || '');
 			currentNode = currentNode.parent;
 		}
-		return segments.join('/');
+		return segments;
+	}
+
+	getFullPath(): string {
+		return '/' + this.getFullPathSegments().join('/');
 	}
 
 	isRoot(): boolean {
