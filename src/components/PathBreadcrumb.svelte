@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { NodeData, TreeNode } from '~/lib/sync/tree';
+	import type { NodeData, TreeNode } from '~/lib/sync';
 
 	interface Props {
 		node: TreeNode<NodeData>;

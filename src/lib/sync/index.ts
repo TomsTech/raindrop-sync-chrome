@@ -12,6 +12,8 @@ export {
 } from './event-listener';
 export type { SyncEventListener, SyncEventProgressKind } from './event-listener';
 export { SyncManager } from './manager';
+export { SyncDiff } from './plan';
+export { NodeData, TreeNode } from './tree';
 
 export default new SyncManager({
 	appSettings,

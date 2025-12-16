@@ -1,6 +1,6 @@
 <script lang="ts" generics="T extends NodeData">
 	import { ChevronDownOutline, ChevronRightOutline } from 'flowbite-svelte-icons';
-	import type { NodeData, TreeNode } from '~/lib/sync/tree';
+	import type { NodeData, TreeNode } from '~/lib/sync';
 
 	export let treeNode: TreeNode<T>;
 	export let collapsed: boolean = true;

@@ -1,5 +1,5 @@
 import { client, generated } from '@lasuillard/raindrop-client';
-import { NodeData, TreeNode } from '~/lib/sync/tree';
+import { NodeData, TreeNode } from '~/lib/sync/tree'; // Be careful for recursive import
 import { normalizeUrl } from '~/lib/util/string';
 
 type GetRootCollectionsResponseItem = generated.GetRootCollectionsResponse['items'][0];
