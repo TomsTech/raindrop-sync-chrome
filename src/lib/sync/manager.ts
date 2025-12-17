@@ -6,7 +6,7 @@ import {
 	ChromeBookmarkRepository,
 	createTreeFromChromeBookmarks
 } from '~/lib/browser/chrome';
-import type { RaindropNodeData } from '~/lib/raindrop';
+import { createTreeFromRaindrops, type RaindropNodeData } from '~/lib/raindrop';
 import type { SyncEvent, SyncEventListener } from './event-listener';
 import {
 	SyncEventComplete,
@@ -136,17 +136,53 @@ export class SyncManager {
 	}
 
 	/**
+	 * Get the full path of the sync location in Chrome bookmarks.
+	 * @returns Full path separated by slashes; example: `"/ Bookmarks Bar / Raindrop Sync"`
+	 */
+	async getSyncLocationFullPath(): Promise<string> {
+		const syncLocation = get(this.appSettings.syncLocation);
+		const syncFolder = await this.repository.getFolderById(syncLocation);
+		return await this.repository.getNodeFullPath(syncFolder);
+	}
+
+	/**
+	 * Get the current bookmark tree from Chrome.
+	 * @returns The current bookmark tree.
+	 */
+	async getCurrentBookmarkTree(): Promise<TreeNode<ChromeBookmarkNodeData>> {
+		const syncLocationId = get(this.appSettings.syncLocation);
+		const syncLocation = await this.repository.getFolderById(syncLocationId);
+		return createTreeFromChromeBookmarks(syncLocation);
+	}
+
+	/**
+	 * Get the expected bookmark tree based on Raindrop.io collections.
+	 * @returns The expected bookmark tree.
+	 */
+	async getExpectedBookmarkTree(): Promise<TreeNode<RaindropNodeData>> {
+		// TODO(#31): Extend implementation for customizable expected tree
+		return createTreeFromRaindrops(this.raindropClient);
+	}
+
+	/**
 	 * Calculate the sync difference between Raindrop.io collections and Chrome bookmarks.
-	 * @param raindropTree The Raindrop.io collection tree.
+	 * @param args Optional arguments to provide current and expected trees.
+	 * @param args.current The current bookmark tree from Chrome.
+	 * @param args.expected The expected bookmark tree based on Raindrop.io collections.
 	 * @returns The calculated SyncDiff object.
 	 */
-	async calculateSyncDiff(
-		raindropTree: TreeNode<RaindropNodeData>
-	): Promise<SyncDiff<RaindropNodeData, ChromeBookmarkNodeData>> {
-		const syncLocation = get(this.appSettings.syncLocation);
-		const base = await this.repository.getFolderById(syncLocation);
-		const chromeBookmarks = await createTreeFromChromeBookmarks(base);
-		return SyncDiff.calculateDiff(raindropTree, chromeBookmarks);
+	async calculateSyncDiff(args?: {
+		current?: TreeNode<ChromeBookmarkNodeData>;
+		expected?: TreeNode<RaindropNodeData>;
+	}): Promise<SyncDiff<RaindropNodeData, ChromeBookmarkNodeData>> {
+		let { current, expected } = args ?? {};
+		if (!current) {
+			current = await this.getCurrentBookmarkTree();
+		}
+		if (!expected) {
+			expected = await this.getExpectedBookmarkTree();
+		}
+		return SyncDiff.calculateDiff(expected, current);
 	}
 
 	protected async performSync() {

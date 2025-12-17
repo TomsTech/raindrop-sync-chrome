@@ -31,6 +31,16 @@ export class ChromeBookmarkRepository {
 		return folder;
 	}
 
+	async getNodeFullPath(node: chrome.bookmarks.BookmarkTreeNode): Promise<string> {
+		let fullPath = node.title;
+		let currentNode = node;
+		while (currentNode.parentId !== undefined) {
+			currentNode = await this.getFolderById(currentNode.parentId);
+			fullPath = currentNode.title + ' / ' + fullPath;
+		}
+		return fullPath;
+	}
+
 	async createBookmarksRecursively(opts: {
 		baseFolder: chrome.bookmarks.BookmarkTreeNode;
 		// TODO: Update below to use generic TreeNode type

@@ -10,51 +10,61 @@
 	import PathBreadcrumb from '~/components/PathBreadcrumb.svelte';
 	import Tree from '~/components/Tree.svelte';
 	import type { ChromeBookmarkNodeData } from '~/lib/browser/chrome';
-	import { createTreeFromChromeBookmarks } from '~/lib/browser/chrome';
-	import { createTreeFromRaindrops, RaindropNodeData } from '~/lib/raindrop';
+	import { RaindropNodeData } from '~/lib/raindrop';
 	import type { TreeNode } from '~/lib/sync';
 	import syncManager, { SyncDiff } from '~/lib/sync';
 
-	let raindropTree: TreeNode<RaindropNodeData> | null = null;
+	// Expected (from Raindrop.io)
+	let expectedBookmarkTree: TreeNode<RaindropNodeData> | null = null;
 	let isFetchingRaindrops = false;
-	let chromeBookmarkTree: TreeNode<ChromeBookmarkNodeData> | null = null;
-	let isFetchingChrome = false;
-	let syncDiff: SyncDiff<RaindropNodeData, ChromeBookmarkNodeData> | null = null;
-	let isCalculatingDiff = false;
+	let syncLocationFullPath: string | null = null;
 
-	const makeRaindropBookmarkTree = async () => {
+	const fetchExpectedBookmarkTree = async () => {
 		isFetchingRaindrops = true;
 		try {
-			// TODO: Bad access to protected attributes -- need refactor
-			raindropTree = await createTreeFromRaindrops(syncManager.raindropClient);
+			expectedBookmarkTree = await syncManager.getExpectedBookmarkTree();
 		} finally {
 			isFetchingRaindrops = false;
 		}
 	};
 
-	const makeChromeBookmarkTree = async () => {
+	// Current (Chrome bookmarks)
+	let currentBookmarkTree: TreeNode<ChromeBookmarkNodeData> | null = null;
+	let isFetchingChrome = false;
+
+	const fetchCurrentBookmarkTree = async () => {
 		isFetchingChrome = true;
 		try {
-			chromeBookmarkTree = await createTreeFromChromeBookmarks();
+			syncLocationFullPath = await syncManager.getSyncLocationFullPath();
+			currentBookmarkTree = await syncManager.getCurrentBookmarkTree();
 		} finally {
 			isFetchingChrome = false;
 		}
 	};
 
+	// Diff
+	let syncDiff: SyncDiff<RaindropNodeData, ChromeBookmarkNodeData> | null = null;
+	let isCalculatingDiff = false;
+
 	const calculateSyncDiff = async () => {
-		if (!raindropTree || !chromeBookmarkTree) {
+		if (!expectedBookmarkTree || !currentBookmarkTree) {
 			return;
 		}
 		isCalculatingDiff = true;
 		try {
-			syncDiff = await syncManager.calculateSyncDiff(raindropTree);
+			syncDiff = await syncManager.calculateSyncDiff({
+				current: currentBookmarkTree,
+				expected: expectedBookmarkTree
+			});
+			console.debug('Calculated difference between current and expected tree: ', syncDiff);
 		} finally {
 			isCalculatingDiff = false;
 		}
 	};
 
 	onMount(async () => {
-		await makeChromeBookmarkTree();
+		// Fetch current tree at init because it's in-browser operation and cheap
+		await fetchCurrentBookmarkTree();
 	});
 </script>
 
@@ -64,16 +74,21 @@
 		<div class="rounded-lg border border-gray-200 bg-white p-4">
 			<div class="mb-4 flex items-center justify-between">
 				<P class="font-semibold text-gray-800">Raindrop.io Bookmarks</P>
-				<Button size="xs" outline onclick={makeRaindropBookmarkTree} disabled={isFetchingRaindrops}>
+				<Button
+					size="xs"
+					outline
+					onclick={fetchExpectedBookmarkTree}
+					disabled={isFetchingRaindrops}
+				>
 					{#if isFetchingRaindrops}
 						<Spinner size="4" class="mr-1" />
 					{/if}
 					Fetch
 				</Button>
 			</div>
-			{#if raindropTree}
+			{#if expectedBookmarkTree}
 				<div class="min-h-[300px] overflow-y-auto">
-					<Tree treeNode={raindropTree} collapsed={false}></Tree>
+					<Tree treeNode={expectedBookmarkTree} collapsed={false}></Tree>
 				</div>
 			{:else}
 				<div class="flex min-h-[300px] items-center justify-center">
@@ -84,14 +99,18 @@
 		<div class="rounded-lg border border-gray-200 bg-white p-4">
 			<div class="mb-4 flex items-center justify-between">
 				<P class="font-semibold text-gray-800">Chrome Bookmarks</P>
-				<Button size="xs" outline onclick={makeChromeBookmarkTree} disabled={isFetchingChrome}>
+				<Button size="xs" outline onclick={fetchCurrentBookmarkTree} disabled={isFetchingChrome}>
 					Reload
 				</Button>
 			</div>
-			{#if chromeBookmarkTree}
+			{#if currentBookmarkTree}
 				<div class="min-h-[300px] overflow-y-auto">
 					<!-- TODO: I want the chrome bookmark to show its full parent path as root; e.g.: /Bookmarks bar/child instead of / -->
-					<Tree treeNode={chromeBookmarkTree} collapsed={false}></Tree>
+					<Tree
+						treeNode={currentBookmarkTree}
+						collapsed={false}
+						nodeTitleOverride={syncLocationFullPath}
+					></Tree>
 				</div>
 			{:else}
 				<div class="flex min-h-[300px] items-center justify-center">
@@ -108,7 +127,7 @@
 				size="xs"
 				outline
 				onclick={calculateSyncDiff}
-				disabled={isCalculatingDiff || !raindropTree || !chromeBookmarkTree}
+				disabled={isCalculatingDiff || !expectedBookmarkTree || !currentBookmarkTree}
 			>
 				Calculate
 			</Button>
@@ -230,7 +249,7 @@
 		{:else}
 			<div class="flex min-h-[120px] items-center justify-center">
 				<P class="text-gray-500 italic">
-					{#if !raindropTree || !chromeBookmarkTree}
+					{#if !expectedBookmarkTree || !currentBookmarkTree}
 						Please fetch both Raindrop.io and Chrome bookmarks first
 					{:else}
 						Click "Calculate" to see sync differences

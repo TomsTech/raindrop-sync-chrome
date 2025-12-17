@@ -1,6 +1,9 @@
 import type { NodeData, TreeNode } from './tree';
 
 export class SyncDiff<L extends NodeData, R extends NodeData> {
+	left: TreeNode<L>;
+	right: TreeNode<R>;
+
 	onlyInLeft: TreeNode<L>[] = [];
 	inBothButDifferent: Array<{
 		left: TreeNode<L>;
@@ -12,15 +15,23 @@ export class SyncDiff<L extends NodeData, R extends NodeData> {
 	}> = [];
 	onlyInRight: TreeNode<R>[] = [];
 
+	constructor(left: TreeNode<L>, right: TreeNode<R>) {
+		this.left = left;
+		this.right = right;
+	}
+
 	static calculateDiff<L extends NodeData, R extends NodeData>(
 		left: TreeNode<L>,
 		right: TreeNode<R>
 	): SyncDiff<L, R> {
-		const diff = new SyncDiff<L, R>();
+		const diff = new SyncDiff<L, R>(left, right);
 
 		// Flatten both trees to maps of their terminal nodes for easier comparison
 		const leftMap = left.toMap({ onlyTerminal: true });
 		const rightMap = right.toMap({ onlyTerminal: true });
+		console.debug('Calculating diff between trees:');
+		console.debug('Left map:', leftMap);
+		console.debug('Right map:', rightMap);
 
 		// Compare left to right
 		for (const [path, leftNode] of leftMap.entries()) {

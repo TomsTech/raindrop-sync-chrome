@@ -4,6 +4,7 @@
 
 	export let treeNode: TreeNode<T>;
 	export let collapsed: boolean = true;
+	export let nodeTitleOverride: string | null = null;
 
 	let isFolder: boolean;
 	let href: string | null;
@@ -13,7 +14,7 @@
 	$: {
 		isFolder = treeNode.isFolder();
 		href = treeNode.getUrl();
-		nodeTitle = treeNode.getName() || '';
+		nodeTitle = nodeTitleOverride || treeNode.getName() || '';
 		childCount = treeNode.children.length;
 	}
 
