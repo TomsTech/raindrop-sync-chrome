@@ -35,8 +35,8 @@
 	const fetchCurrentBookmarkTree = async () => {
 		isFetchingChrome = true;
 		try {
-			syncLocationFullPath = await syncManager.getSyncLocationFullPath();
 			currentBookmarkTree = await syncManager.getCurrentBookmarkTree();
+			syncLocationFullPath = currentBookmarkTree.getFullPathSegments().join(' / ') + ' /';
 		} finally {
 			isFetchingChrome = false;
 		}

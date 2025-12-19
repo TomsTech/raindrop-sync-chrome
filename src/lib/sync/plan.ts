@@ -28,7 +28,11 @@ export class SyncDiff<L extends NodeData, R extends NodeData> {
 
 		// Flatten both trees to maps of their terminal nodes for easier comparison
 		const leftMap = left.toMap({ onlyTerminal: true });
-		const rightMap = right.toMap({ onlyTerminal: true });
+		const rightMap = right.toMap({
+			onlyTerminal: true,
+			// Use itself as base to calculate path relative to the sync target location
+			relativeTo: right
+		});
 		console.debug('Calculating diff between trees:');
 		console.debug('Left map:', leftMap);
 		console.debug('Right map:', rightMap);

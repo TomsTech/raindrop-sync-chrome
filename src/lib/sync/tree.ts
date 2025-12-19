@@ -98,21 +98,21 @@ export class TreeNode<D extends NodeData> {
 		return this.data?.getUrl() ?? null;
 	}
 
-	getFullPathSegments(): string[] {
+	getFullPathSegments(relativeTo?: TreeNode<D>): string[] {
 		const segments: string[] = [];
 
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		let currentNode: TreeNode<D> | null = this;
 
-		while (currentNode && !currentNode.isRoot()) {
+		while (currentNode && !currentNode.isRoot() && currentNode !== relativeTo) {
 			segments.unshift(currentNode.getName() || '');
 			currentNode = currentNode.parent;
 		}
 		return segments;
 	}
 
-	getFullPath(): string {
-		return '/' + this.getFullPathSegments().join('/');
+	getFullPath(relativeTo?: TreeNode<D>): string {
+		return '/' + this.getFullPathSegments(relativeTo).join('/');
 	}
 
 	isRoot(): boolean {
@@ -146,13 +146,14 @@ export class TreeNode<D extends NodeData> {
 	 * Convert the tree to a map of its children to their path.
 	 * @param opts Options
 	 * @param opts.onlyTerminal If true, only include terminal nodes in the map
+	 * @param opts.relativeTo If provided, paths will be relative to this node
 	 * @returns Map where keys are paths and values are Tree nodes
 	 */
-	toMap(opts?: { onlyTerminal?: boolean }): Map<string, TreeNode<D>> {
+	toMap(opts?: { onlyTerminal?: boolean; relativeTo?: TreeNode<D> }): Map<string, TreeNode<D>> {
 		const onlyTerminal = opts?.onlyTerminal ?? false;
 		const map = new Map<string, TreeNode<D>>();
 		this.dfs((node) => {
-			const key = node.getFullPath();
+			const key = node.getFullPath(opts?.relativeTo);
 			if (map.has(key)) {
 				throw new Error(`Duplicate node ID detected in tree map: ${key}`);
 			}

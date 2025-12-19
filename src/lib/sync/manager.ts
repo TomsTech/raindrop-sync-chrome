@@ -136,16 +136,6 @@ export class SyncManager {
 	}
 
 	/**
-	 * Get the full path of the sync location in Chrome bookmarks.
-	 * @returns Full path separated by slashes; example: `"/ Bookmarks Bar / Raindrop Sync"`
-	 */
-	async getSyncLocationFullPath(): Promise<string> {
-		const syncLocation = get(this.appSettings.syncLocation);
-		const syncFolder = await this.repository.getFolderById(syncLocation);
-		return await this.repository.getNodeFullPath(syncFolder);
-	}
-
-	/**
 	 * Get the current bookmark tree from Chrome.
 	 * @returns The current bookmark tree.
 	 */

@@ -44,22 +44,14 @@ export class ChromeBookmarkNodeData extends NodeData {
 
 /**
  * Creates a tree structure from Chrome bookmarks.
- * @param root Optional base tree node to start from. If not provided, the entire bookmark tree is used.
+ * @param base Optional base node to start from
  * @returns Root node of the tree
  */
 export async function createTreeFromChromeBookmarks(
-	root?: chrome.bookmarks.BookmarkTreeNode
+	base?: chrome.bookmarks.BookmarkTreeNode
 ): Promise<TreeNode<ChromeBookmarkNodeData>> {
-	if (root) {
-		// * Monkey-patch provided base to make it look like root
-		console.debug(`Using provided Chrome bookmark subtree as root: ${root.title} (${root.id})`);
-		root.title = '';
-		root.parentId = undefined;
-	} else {
-		console.debug('Fetching entire Chrome bookmark tree as root');
-		const tree = await chrome.bookmarks.getTree();
-		root = tree[0];
-	}
+	const tree = await chrome.bookmarks.getTree();
+	const root = tree[0];
 
 	// Perform BFS to flatten the tree
 	const dataList = [];
@@ -76,7 +68,20 @@ export async function createTreeFromChromeBookmarks(
 
 	// Unwrap redundant root wrapper added during tree creation
 	const rootWrapper = TreeNode.createTree(null, dataList);
-	const innerRoot = rootWrapper.children[0];
-	innerRoot.parent = null;
-	return innerRoot;
+	if (!base) {
+		const innerRoot = rootWrapper.children[0];
+		return innerRoot;
+	}
+
+	// Locate the base node in the created tree
+	let baseNode: TreeNode<ChromeBookmarkNodeData> | undefined;
+	rootWrapper.dfs((node) => {
+		if (node.getId() === base?.id && !baseNode) {
+			baseNode = node;
+		}
+	});
+	if (baseNode === undefined) {
+		throw new Error(`Failed to locate the base node (${base.id}) in the created tree`);
+	}
+	return baseNode;
 }
