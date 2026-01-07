@@ -7,6 +7,7 @@ import {
 	createTreeFromChromeBookmarks
 } from '~/lib/browser/chrome';
 import { createTreeFromRaindrops, type RaindropNodeData } from '~/lib/raindrop';
+import { Path } from '../util/path';
 import { SyncDiff } from './diff';
 import type { SyncEvent, SyncEventListener } from './event-listener';
 import {
@@ -15,6 +16,8 @@ import {
 	SyncEventProgress,
 	SyncEventStart
 } from './event-listener';
+import { SyncExecutor } from './executor';
+import { SyncPlan } from './plan';
 import { TreeNode } from './tree';
 
 /**
@@ -175,7 +178,30 @@ export class SyncManager {
 		return SyncDiff.calculateDiff(expected, current);
 	}
 
-	protected async performSync() {
+	/**
+	 * Generate a sync plan based on the calculated sync diff.
+	 * @param diff Optional pre-calculated SyncDiff object.
+	 * @param syncFolder The base folder path for synchronization.
+	 * @returns The generated SyncPlan object.
+	 */
+	async generateSyncPlan(
+		diff: SyncDiff<RaindropNodeData, ChromeBookmarkNodeData>,
+		syncFolder: Path
+	) {
+		if (!diff) {
+			diff = await this.calculateSyncDiff();
+		}
+		return SyncPlan.fromDiff(diff, syncFolder);
+	}
+
+	// TODO: Add flag in settings to use legacy sync mechanism for testing purposes
+	/**
+	 * Legacy, simplified synchronization process.
+	 *
+	 * It cleans up the target folder entirely and recreates bookmarks based on Raindrop.io collections.
+	 * @deprecated Use performSync() for a more efficient sync mechanism.
+	 */
+	protected async performSyncLegacy() {
 		console.debug('Performing synchronization process');
 
 		// Fetch the collection tree from Raindrop.io
@@ -201,6 +227,44 @@ export class SyncManager {
 			tree: treeNode,
 			raindropClient: this.raindropClient
 		});
+
+		// Update last sync time
+		const lastSyncTime = new Date();
+		await this.appSettings.clientLastSync.set(lastSyncTime);
+		console.info(`Synchronization completed at ${lastSyncTime.toISOString()}`);
+	}
+
+	protected async performSync() {
+		console.debug('Performing synchronization process');
+
+		// Fetch the collection tree from Raindrop.io
+		console.debug('Fetching collection tree from Raindrop.io');
+		this.emitEvent(new SyncEventProgress('fetching-collections'));
+
+		// Get the sync folder
+		const syncFolderId = get(this.appSettings.syncLocation);
+		const syncFolder = await this.repository.getFolderById(syncFolderId);
+		const currentBookmarkTree = await this.getCurrentBookmarkTree();
+		console.debug(
+			`Sync folder found: ${syncFolder.title} (${syncFolder.id}); ${currentBookmarkTree.getFullPathSegments()}`
+		);
+
+		// Create sync executor
+		const diff = await this.calculateSyncDiff();
+		const plan = await this.generateSyncPlan(
+			diff,
+			new Path({ segments: currentBookmarkTree.getFullPathSegments().slice(1) })
+		);
+		console.debug('Generated sync plan:', plan);
+		const executor = new SyncExecutor({
+			repository: this.repository,
+			plan
+		});
+
+		// Run the sync executor to apply the sync plan
+		// TODO: Add new progress event for detailed progress within executor (e.g. 1/n operations completed...)
+		this.emitEvent(new SyncEventProgress('creating-bookmarks'));
+		await executor.execute();
 
 		// Update last sync time
 		const lastSyncTime = new Date();
