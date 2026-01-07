@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
@@ -28,14 +28,14 @@ jobs:
         run: zip -r raindrop-sync-for-chrome.zip dist
 
       - name: Preserve build artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: raindrop-sync-for-chrome
           path: ./raindrop-sync-for-chrome.zip
           retention-days: 14
 
       - name: Create release
-        uses: softprops/action-gh-release@v2.4.2
+        uses: softprops/action-gh-release@v2.5.0
         with:
           tag_name: ${{ github.event.release.tag_name }}
           generate_release_notes: true
