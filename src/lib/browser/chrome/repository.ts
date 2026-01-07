@@ -85,7 +85,7 @@ export class ChromeBookmarkRepository {
 	async getBookmarkByPath(path: Path): Promise<chrome.bookmarks.BookmarkTreeNode> {
 		const bookmark = await this.findBookmarkByPath(path);
 		if (!bookmark) {
-			throw new BookmarkNotFoundError(`Bookmark with path ${path.getFullPath()} not found`);
+			throw new BookmarkNotFoundError(`Bookmark with path ${path.toString()} not found`);
 		}
 		return bookmark;
 	}

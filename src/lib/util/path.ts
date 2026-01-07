@@ -40,8 +40,8 @@ export class Path {
 	 * Get the full path as a string.
 	 * @returns The full path string.
 	 */
-	getFullPath(): string {
-		return PathSeparator + this.pathSegments.join(PathSeparator);
+	toString(): string {
+		return '/' + this.pathSegments.join('/');
 	}
 
 	/**
