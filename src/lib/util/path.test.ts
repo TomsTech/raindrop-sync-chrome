@@ -20,6 +20,14 @@ describe('Path', () => {
 		expect(path.toString()).toBe('/folder/subfolder\\/withslash/file.txt');
 	});
 
+	it('reconstructs from string created by toString()', () => {
+		const originalPath = new Path({ segments: ['folder', 'subfolder', 'file.txt'] });
+		const pathString = originalPath.toString();
+		const reconstructedPath = new Path({ fullPath: pathString });
+		expect(reconstructedPath.getSegments()).toEqual(originalPath.getSegments());
+		expect(reconstructedPath.toString()).toBe(originalPath.toString());
+	});
+
 	it("root path should have no segments and has string representation '/'", () => {
 		const rootPath = Path.root();
 		expect(rootPath.getSegments()).toEqual([]);
