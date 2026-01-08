@@ -96,8 +96,22 @@ export class PathMap<Value> {
 	}
 
 	entries(): IterableIterator<[Path, Value]> {
-		// BUG: Path construction malformed here
-		return this.map.entries().map(([key, value]) => [new Path({ fullPath: key }), value]);
+		// NOTE: `this.map.entries().map(([key, value]) => [new Path({ fullPath: key }), value])`
+		//       will fail because Map's iterator does not have a `map` method.
+		const iterator = this.map.entries();
+		return {
+			[Symbol.iterator]() {
+				return this;
+			},
+			next(): IteratorResult<[Path, Value]> {
+				const result = iterator.next();
+				if (result.done) {
+					return { done: true, value: undefined };
+				}
+				const [key, value] = result.value;
+				return { done: false, value: [new Path({ fullPath: key }), value] };
+			}
+		};
 	}
 
 	values(): IterableIterator<Value> {
