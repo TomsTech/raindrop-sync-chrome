@@ -120,6 +120,7 @@ async function getAllRaindrops(
 
 	return items;
 }
+
 /**
  * Creates a tree structure from Raindrop.io collections.
  * @param raindropClient Raindrop.io client
