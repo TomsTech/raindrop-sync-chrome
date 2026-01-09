@@ -139,6 +139,10 @@ export class TreeNode<D extends NodeData> {
 		this.children = this.children.filter((c) => c !== child);
 	}
 
+	/**
+	 * Depth-first traversal of the tree.
+	 * @param callback Callback function to execute on each node
+	 */
 	dfs(callback: TraversalCallback<TreeNode<D>>) {
 		callback(this);
 		for (const child of this.children) {

@@ -79,6 +79,10 @@ export class PathMap<Value> {
 		this.map = new Map<string, Value>();
 	}
 
+	get size(): number {
+		return this.map.size;
+	}
+
 	get(path: Path): Value | undefined {
 		return this.map.get(path.toString());
 	}
@@ -110,6 +114,23 @@ export class PathMap<Value> {
 				}
 				const [key, value] = result.value;
 				return { done: false, value: [new Path({ pathString: key }), value] };
+			}
+		};
+	}
+
+	keys(): IterableIterator<Path> {
+		const iterator = this.map.keys();
+		return {
+			[Symbol.iterator]() {
+				return this;
+			},
+			next(): IteratorResult<Path> {
+				const result = iterator.next();
+				if (result.done) {
+					return { done: true, value: undefined };
+				}
+				const key = result.value;
+				return { done: false, value: new Path({ pathString: key }) };
 			}
 		};
 	}
