@@ -1,17 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { NodeData, TreeNode } from '~/lib/sync';
-
 	interface Props {
-		node: TreeNode<NodeData>;
+		pathSegments: string[];
 	}
-
-	let { node }: Props = $props();
-	let pathSegments: string[] = $state([]);
-
-	onMount(() => {
-		pathSegments = node.getFullPath().getSegments();
-	});
+	let { pathSegments }: Props = $props();
 </script>
 
 <div class="rounded bg-white p-2">
@@ -21,7 +12,10 @@
 			{#if index > 0}
 				<span>/</span>
 			{/if}
-			<span class={index === pathSegments.length - 1 ? 'font-medium text-gray-900' : ''}>
+			<span
+				class={index === pathSegments.length - 1 ? 'font-medium text-gray-900' : ''}
+				data-testid={'path-segment-' + index}
+			>
 				{segment}
 			</span>
 		{/each}

@@ -157,7 +157,7 @@
 							{#if syncDiff.onlyInLeft.length > 0}
 								<div class="max-h-[300px] space-y-2 overflow-y-auto">
 									{#each syncDiff.onlyInLeft as node (node.getId())}
-										<PathBreadcrumb {node} />
+										<PathBreadcrumb pathSegments={node.getFullPath().getSegments()} />
 									{/each}
 								</div>
 							{:else}
@@ -185,7 +185,7 @@
 							{#if syncDiff.onlyInRight.length > 0}
 								<div class="max-h-[300px] space-y-2 overflow-y-auto">
 									{#each syncDiff.onlyInRight as node (node.getId())}
-										<PathBreadcrumb {node} />
+										<PathBreadcrumb pathSegments={node.getFullPath().getSegments()} />
 									{/each}
 								</div>
 							{:else}
@@ -213,7 +213,7 @@
 							{#if syncDiff.inBothButDifferent.length > 0}
 								<div class="max-h-[300px] space-y-2 overflow-y-auto">
 									{#each syncDiff.inBothButDifferent as pair ((pair.left.getId(), pair.right.getId()))}
-										<PathBreadcrumb node={pair.left} />
+										<PathBreadcrumb pathSegments={pair.left.getFullPath().getSegments()} />
 									{/each}
 								</div>
 							{:else}
@@ -241,7 +241,7 @@
 							{#if syncDiff.unchanged.length > 0}
 								<div class="max-h-[300px] space-y-2 overflow-y-auto">
 									{#each syncDiff.unchanged as pair ((pair.left.getId(), pair.right.getId()))}
-										<PathBreadcrumb node={pair.left} />
+										<PathBreadcrumb pathSegments={pair.left.getFullPath().getSegments()} />
 									{/each}
 								</div>
 							{:else}
