@@ -1207,6 +1207,11 @@
     "@testing-library/dom" "9.x.x || 10.x.x"
     "@testing-library/svelte-core" "1.0.0"
 
+"@testing-library/user-event@^14.6.1":
+  version "14.6.1"
+  resolved "https://registry.yarnpkg.com/@testing-library/user-event/-/user-event-14.6.1.tgz#13e09a32d7a8b7060fe38304788ebf4197cd2149"
+  integrity sha512-vq7fv0rnt+QTXgPxr5Hjc210p6YKq2kmdziLgnsZGgLJ9e6VAShx1pACLuRjd/AS/sr7phAR58OIIpf0LlmQNw==
+
 "@tsconfig/svelte@^5.0.2":
   version "5.0.4"
   resolved "https://registry.yarnpkg.com/@tsconfig/svelte/-/svelte-5.0.4.tgz#8bd0254472bd39a5e750f1b4a05ecb18c9f3bf80"
