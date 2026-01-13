@@ -1,6 +1,5 @@
 import { client, generated } from '@lasuillard/raindrop-client';
 import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig } from 'axios';
-// import { setupCache } from 'axios-cache-interceptor';
 import { get } from 'svelte/store';
 import { appSettings } from '~/config';
 
@@ -42,7 +41,6 @@ export function getAxiosClient(): AxiosInstance {
 		// baseURL: 'https://api.raindrop.io'
 	});
 
-	// TODO: Request throttling; https://www.npmjs.com/package/axios-request-throttle
 	instance.interceptors.request.use(
 		function (config) {
 			const accessToken = get(appSettings.accessToken);
@@ -103,9 +101,6 @@ export function getAxiosClient(): AxiosInstance {
 			return Promise.reject(error);
 		}
 	);
-
-	// TODO: Disabled premature cache setup for now for debugging purpose
-	// setupCache(instance);
 
 	return instance;
 }

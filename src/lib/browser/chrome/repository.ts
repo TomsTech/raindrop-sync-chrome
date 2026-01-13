@@ -221,7 +221,6 @@ export class ChromeBookmarkRepository {
 	 */
 	async createBookmarksRecursively(opts: {
 		baseFolder: chrome.bookmarks.BookmarkTreeNode;
-		// TODO: Update below to use generic TreeNode type
 		tree: utils.tree.TreeNode<generated.Collection | null>;
 		raindropClient: client.Raindrop;
 	}) {

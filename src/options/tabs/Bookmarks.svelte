@@ -110,7 +110,6 @@
 			</div>
 			{#if currentBookmarkTree}
 				<div class="min-h-[300px] overflow-y-auto">
-					<!-- TODO: I want the chrome bookmark to show its full parent path as root; e.g.: /Bookmarks bar/child instead of / -->
 					<Tree
 						treeNode={currentBookmarkTree}
 						collapsed={false}
