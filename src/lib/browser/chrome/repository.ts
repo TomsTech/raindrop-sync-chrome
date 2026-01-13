@@ -1,7 +1,15 @@
 import type { client, generated, utils } from '@lasuillard/raindrop-client';
 import { Path } from '~/lib/util/path';
 
-class BookmarkNotFoundError extends Error {
+export class FolderNotFoundError extends Error {
+	constructor(message: string) {
+		super(message);
+		Object.setPrototypeOf(this, FolderNotFoundError.prototype);
+		this.name = 'FolderNotFoundError';
+	}
+}
+
+export class BookmarkNotFoundError extends Error {
 	constructor(message: string) {
 		super(message);
 		Object.setPrototypeOf(this, BookmarkNotFoundError.prototype);
@@ -16,38 +24,39 @@ class BookmarkNotFoundError extends Error {
  */
 export class ChromeBookmarkRepository {
 	/**
+	 * Get a folder by its ID.
+	 * @param id Folder ID.
+	 * @throws {FolderNotFoundError} if folder is not found.
+	 * @returns The bookmark folder.
+	 */
+	async getFolderById(id: string): Promise<chrome.bookmarks.BookmarkTreeNode> {
+		try {
+			return (await chrome.bookmarks.getSubTree(id))[0];
+		} catch (err) {
+			throw new FolderNotFoundError(`Folder with ID ${id} not found: ${err}`);
+		}
+	}
+
+	/**
 	 * Find a folder by its ID.
 	 * @param id Folder ID.
 	 * @returns The bookmark folder or null if not found.
 	 */
 	async findFolderById(id: string): Promise<chrome.bookmarks.BookmarkTreeNode | null> {
-		const folder = (await chrome.bookmarks.getSubTree(id))[0];
-		if (!folder) {
+		try {
+			return await this.getFolderById(id);
+		} catch {
 			return null;
 		}
-		return folder;
 	}
 
 	/**
-	 * Get a folder by its ID.
-	 * @param id Folder ID.
-	 * @throws {Error} if folder is not found.
-	 * @returns The bookmark folder.
-	 */
-	async getFolderById(id: string): Promise<chrome.bookmarks.BookmarkTreeNode> {
-		const folder = await this.findFolderById(id);
-		if (!folder) {
-			throw new Error(`Folder with ID ${id} not found`);
-		}
-		return folder;
-	}
-
-	/**
-	 * Find a bookmark by its path.
+	 * Get a bookmark by its path.
 	 * @param path The path of the bookmark.
-	 * @returns The bookmark node or null if not found.
+	 * @throws {BookmarkNotFoundError} if bookmark is not found.
+	 * @returns The bookmark node.
 	 */
-	async findBookmarkByPath(path: Path): Promise<chrome.bookmarks.BookmarkTreeNode | null> {
+	async getBookmarkByPath(path: Path): Promise<chrome.bookmarks.BookmarkTreeNode> {
 		const tree = await chrome.bookmarks.getTree();
 		const root = tree[0];
 
@@ -58,7 +67,7 @@ export class ChromeBookmarkRepository {
 			const segment = segments.shift();
 			const nextNode = currentNodes.find((node) => node.title === segment);
 			if (!nextNode) {
-				return null;
+				break;
 			}
 
 			if (nextNode.children) {
@@ -73,21 +82,54 @@ export class ChromeBookmarkRepository {
 		}
 
 		// Not found
-		return null;
+		throw new BookmarkNotFoundError(`Bookmark with path ${path.toString()} not found`);
 	}
 
 	/**
-	 * Get a bookmark by its path.
+	 * Find a bookmark by its path.
 	 * @param path The path of the bookmark.
-	 * @throws {BookmarkNotFoundError} if bookmark is not found.
-	 * @returns The bookmark node.
+	 * @returns The bookmark node or null if not found.
 	 */
-	async getBookmarkByPath(path: Path): Promise<chrome.bookmarks.BookmarkTreeNode> {
-		const bookmark = await this.findBookmarkByPath(path);
-		if (!bookmark) {
-			throw new BookmarkNotFoundError(`Bookmark with path ${path.toString()} not found`);
+	async findBookmarkByPath(path: Path): Promise<chrome.bookmarks.BookmarkTreeNode | null> {
+		try {
+			return await this.getBookmarkByPath(path);
+		} catch {
+			return null;
 		}
-		return bookmark;
+	}
+
+	/**
+	 * Create a folder by its path.
+	 * @param path The path of the folder.
+	 * @param options Options for folder creation.
+	 * @param options.createParentIfNotExists Whether to create parent folders if they do not exist.
+	 * @returns The created folder node.
+	 */
+	async createFolder(
+		path: Path,
+		options?: { createParentIfNotExists?: boolean }
+	): Promise<chrome.bookmarks.BookmarkTreeNode> {
+		const createParentIfNotExists = options?.createParentIfNotExists ?? false;
+		const tree = await chrome.bookmarks.getTree();
+		let root = tree[0];
+		for (const segment of path.getSegments()) {
+			if (!root.children) {
+				throw new Error(
+					'Invalid bookmark structure; non-folder node encountered while creating folder'
+				);
+			}
+			let nextNode = root.children.find((node) => node.title === segment);
+			if (!nextNode && createParentIfNotExists) {
+				nextNode = await chrome.bookmarks.create({
+					parentId: root.id,
+					title: segment
+				});
+			} else if (!nextNode) {
+				throw new FolderNotFoundError(`Folder with path ${path.toString()} not found`);
+			}
+			root = nextNode;
+		}
+		return root;
 	}
 
 	/**
@@ -114,9 +156,7 @@ export class ChromeBookmarkRepository {
 		const parent = path.getParent();
 		let parentFolder: chrome.bookmarks.BookmarkTreeNode;
 		if (createParentIfNotExists) {
-			parentFolder = await this.createFolder(parent, {
-				createParentIfNotExists: createParentIfNotExists
-			});
+			parentFolder = await this.createFolder(parent, { createParentIfNotExists });
 		} else {
 			parentFolder = await this.getBookmarkByPath(parent);
 		}
@@ -127,35 +167,10 @@ export class ChromeBookmarkRepository {
 		});
 	}
 
-	async createFolder(
-		path: Path,
-		options?: { createParentIfNotExists?: boolean }
-	): Promise<chrome.bookmarks.BookmarkTreeNode> {
-		const tree = await chrome.bookmarks.getTree();
-		let root = tree[0];
-		for (const segment of path.getSegments()) {
-			if (!root.children) {
-				throw new Error(
-					'Invalid bookmark structure; non-folder node encountered while creating folder'
-				);
-			}
-			let nextNode = root.children.find((node) => node.title === segment);
-			if (!nextNode && options?.createParentIfNotExists) {
-				nextNode = await chrome.bookmarks.create({
-					parentId: root.id,
-					title: segment
-				});
-			} else if (!nextNode) {
-				throw new BookmarkNotFoundError(`Folder with path ${path.toString()} not found`);
-			}
-			root = nextNode;
-		}
-		return root;
-	}
-
 	/**
 	 * Delete a bookmark by its path.
 	 * @param path The path of the bookmark to delete.
+	 * @throws {BookmarkNotFoundError} if bookmark is not found.
 	 */
 	async deleteBookmark(path: Path) {
 		const bookmark = await this.getBookmarkByPath(path);
@@ -186,6 +201,7 @@ export class ChromeBookmarkRepository {
 	/**
 	 * Clear all bookmarks in a folder.
 	 * @param folder Folder to clear bookmarks.
+	 * @deprecated This method will be removed in future versions.
 	 */
 	async clearAllBookmarksInFolder(folder: chrome.bookmarks.BookmarkTreeNode) {
 		const promises = [];
@@ -201,6 +217,7 @@ export class ChromeBookmarkRepository {
 	 * @param opts.baseFolder The base folder where bookmarks should be created.
 	 * @param opts.tree The tree structure representing collections and bookmarks.
 	 * @param opts.raindropClient The Raindrop.io client to fetch raindrops.
+	 * @deprecated This method will be removed in future versions.
 	 */
 	async createBookmarksRecursively(opts: {
 		baseFolder: chrome.bookmarks.BookmarkTreeNode;

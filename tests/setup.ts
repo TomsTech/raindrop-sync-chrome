@@ -10,6 +10,13 @@ beforeAll(() => {
 		//
 		// vi.mocked(chrome.bookmarks.getSubTree).mockImplementationOnce(...)
 		//
+		bookmarks: {
+			getTree: vi.fn(),
+			getSubTree: vi.fn(),
+			create: vi.fn(),
+			remove: vi.fn(),
+			removeTree: vi.fn()
+		},
 		identity: {
 			getRedirectURL: vi.fn(),
 			launchWebAuthFlow: vi.fn()
