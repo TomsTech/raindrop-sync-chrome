@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Path } from '~/lib/util/path';
-import { NodeData, TreeNode } from './tree';
+import { NodeData, PathConflictError, TreeNode } from './tree';
 
 // NodeData implementation for testing
 class TestNodeData extends NodeData {
@@ -205,6 +205,17 @@ describe('TreeNode', () => {
 		expect(bookmark121?.isTerminal()).toBe(true);
 	});
 
+	it('ignore dangling nodes without valid parents', () => {
+		const danglingNode = new TestNodeData({
+			id: 'dangling',
+			parentId: 'non-existent',
+			name: 'Dangling Node',
+			url: null,
+			isFolder: true
+		});
+		expect(() => TreeNode.createTree(rootData, [...exampleData, danglingNode])).not.toThrowError();
+	});
+
 	it('dfs() should traverse all nodes in depth-first order', () => {
 		const names: string[] = [];
 		tree.dfs((node) => {
@@ -223,14 +234,14 @@ describe('TreeNode', () => {
 	it('toMap() should return correct path map', () => {
 		const pathMap = tree.toMap();
 		expect(pathMap.size).toBe(6);
-    expect(Array.from(pathMap.keys()).map(path => path.toString())).toEqual([
-      '/',
-      '/Folder 1',
-      '/Folder 1/Bookmark 1-1',
-      '/Folder 1/Folder 1-2',
-      '/Folder 1/Folder 1-2/Bookmark 1-2-1',
-      '/Bookmark 2'
-    ])
+		expect(Array.from(pathMap.keys()).map((path) => path.toString())).toEqual([
+			'/',
+			'/Folder 1',
+			'/Folder 1/Bookmark 1-1',
+			'/Folder 1/Folder 1-2',
+			'/Folder 1/Folder 1-2/Bookmark 1-2-1',
+			'/Bookmark 2'
+		]);
 	});
 
 	it('toMap() with onlyTerminal=true should return path map with only terminal nodes', () => {
@@ -251,5 +262,27 @@ describe('TreeNode', () => {
 		const bookmark2Node = pathMap.get(bookmark2Path);
 		expect(bookmark2Node).toBeDefined();
 		expect(bookmark2Node?.getName()).toBe('Bookmark 2');
+	});
+
+	it('toMap() should throw PathConflictError if conflicting paths given', () => {
+		const tree = TreeNode.createTree(rootData, [
+			new TestNodeData({
+				id: '1',
+				parentId: null,
+				name: 'Conflict',
+				url: null,
+				isFolder: true
+			}),
+			new TestNodeData({
+				id: '2',
+				parentId: null,
+				name: 'Conflict',
+				url: null,
+				isFolder: true
+			})
+		]);
+		expect(() => {
+			tree.toMap();
+		}).toThrowError(PathConflictError);
 	});
 });

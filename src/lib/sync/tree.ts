@@ -1,5 +1,13 @@
 import { Path, PathMap } from '~/lib/util/path';
 
+export class PathConflictError extends Error {
+	constructor(message: string) {
+		super(message);
+		Object.setPrototypeOf(this, PathConflictError.prototype);
+		this.name = 'PathConflictError';
+	}
+}
+
 /** Abstraction for required functionality of raw source data types. */
 export abstract class NodeData {
 	abstract getId(): string;
@@ -163,7 +171,7 @@ export class TreeNode<D extends NodeData> {
 		this.dfs((node) => {
 			const key = node.getFullPath(opts?.relativeTo);
 			if (map.has(key)) {
-				throw new Error(`Duplicate node ID detected in tree map: ${key}`);
+				throw new PathConflictError(`Conflicting node found in tree map: ${key}`);
 			}
 			if (!onlyTerminal || (onlyTerminal && node.isTerminal())) {
 				map.set(key, node);

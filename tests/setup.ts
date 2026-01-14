@@ -15,7 +15,8 @@ beforeAll(() => {
 			getSubTree: vi.fn(),
 			create: vi.fn(),
 			remove: vi.fn(),
-			removeTree: vi.fn()
+			removeTree: vi.fn(),
+			update: vi.fn()
 		},
 		identity: {
 			getRedirectURL: vi.fn(),

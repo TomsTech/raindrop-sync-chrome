@@ -14,6 +14,15 @@ describe('Path', () => {
 		expect(path.toString()).toBe('/folder/subfolder/file.txt');
 	});
 
+	it('should provide either pathString or segments, not both', () => {
+		expect(() => {
+			new Path({});
+		}).toThrow('Either pathString or segments must be provided');
+		expect(() => {
+			new Path({ pathString: '/folder/file.txt', segments: ['folder', 'file.txt'] });
+		}).toThrow('Cannot provide both pathString and segments');
+	});
+
 	it('constructs from string correctly with escaped path separators in segments', () => {
 		const path = new Path({ pathString: '/folder/subfolder\\/withslash/file.txt' });
 		expect(path.getSegments()).toEqual(['folder', 'subfolder\\/withslash', 'file.txt']);

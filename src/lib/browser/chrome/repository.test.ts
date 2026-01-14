@@ -282,6 +282,11 @@ describe('createFolder', () => {
 			)
 		).rejects.toThrowError(FolderNotFoundError);
 	});
+
+	it.todo(
+		'should throw BadStructureError when non-folder node encountered while creating folder',
+		async () => {}
+	);
 });
 
 describe('createBookmark', () => {
@@ -344,6 +349,38 @@ describe('deleteBookmark', () => {
 				new Path({
 					segments: ['Bookmarks bar', 'NonExistentFolder', 'SomeBookmark']
 				})
+			)
+		).rejects.toThrowError(BookmarkNotFoundError);
+	});
+});
+
+describe('updateBookmark', () => {
+	it('should update the bookmark when found', async () => {
+		await repository.updateBookmark(
+			new Path({
+				segments: ['Bookmarks bar', 'updateRaindrops', 'updateRaindrops']
+			}),
+			{
+				title: 'Updated Title',
+				url: 'https://updated-url.com'
+			}
+		);
+		expect(chrome.bookmarks.update).toHaveBeenCalledWith('6', {
+			title: 'Updated Title',
+			url: 'https://updated-url.com'
+		});
+	});
+
+	it('should throw BookmarkNotFoundError when bookmark not found', async () => {
+		await expect(
+			repository.updateBookmark(
+				new Path({
+					segments: ['Bookmarks bar', 'NonExistentFolder', 'SomeBookmark']
+				}),
+				{
+					title: 'Updated Title',
+					url: 'https://updated-url.com'
+				}
 			)
 		).rejects.toThrowError(BookmarkNotFoundError);
 	});
@@ -482,8 +519,7 @@ describe('createBookmarksRecursively', () => {
 			data: null,
 			_parent: null
 		}));
-		// @ts-expect-error Ignore type mismatch for mocks
-		mockedRaindropClient.raindrop.getAllRaindrops.mockImplementation(() => [
+		mockedRaindropClient.raindrop.getAllRaindrops.mockResolvedValue([
 			{
 				_id: 1491378920,
 				collection: {
