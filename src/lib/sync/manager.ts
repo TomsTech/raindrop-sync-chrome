@@ -1,4 +1,3 @@
-import { client } from '@lasuillard/raindrop-client';
 import { get } from 'svelte/store';
 import type { AppSettings } from '~/config/settings';
 import {
@@ -19,13 +18,14 @@ import {
 import { SyncExecutor } from './executor';
 import { SyncPlan } from './plan';
 import { TreeNode } from './tree';
+import type { Raindrop } from '~/lib/raindrop/client';
 
 /**
  * Manages synchronization between Raindrop.io and browser bookmarks.
  */
 export class SyncManager {
 	appSettings: AppSettings;
-	raindropClient: client.Raindrop;
+	raindropClient: Raindrop;
 	repository: ChromeBookmarkRepository;
 
 	private listeners: SyncEventListener[] = [];
@@ -40,7 +40,7 @@ export class SyncManager {
 	constructor(opts: {
 		appSettings: AppSettings;
 		repository: ChromeBookmarkRepository;
-		raindropClient: client.Raindrop;
+		raindropClient: Raindrop;
 	}) {
 		this.appSettings = opts.appSettings;
 		this.repository = opts.repository;

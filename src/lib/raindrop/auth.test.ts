@@ -1,6 +1,6 @@
-import { client } from '@lasuillard/raindrop-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { launchWebAuthFlow } from './auth';
+import { Raindrop } from './client';
 
 const tokenResponse = {
 	access_token: '<ACCESS_TOKEN>',
@@ -11,7 +11,7 @@ const tokenResponse = {
 };
 
 describe(launchWebAuthFlow, () => {
-	const rd = new client.Raindrop();
+	const rd = new Raindrop();
 
 	beforeEach(() => {
 		vi.mocked(chrome.identity.getRedirectURL).mockReturnValue(

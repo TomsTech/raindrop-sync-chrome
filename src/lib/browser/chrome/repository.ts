@@ -1,5 +1,6 @@
-import type { client, generated, utils } from '@lasuillard/raindrop-client';
+import type { generated, utils } from '@lasuillard/raindrop-client';
 import { Path } from '~/lib/util/path';
+import type { Raindrop } from '~/lib/raindrop/client';
 
 export class FolderNotFoundError extends Error {
 	constructor(message: string) {
@@ -222,7 +223,7 @@ export class ChromeBookmarkRepository {
 	async createBookmarksRecursively(opts: {
 		baseFolder: chrome.bookmarks.BookmarkTreeNode;
 		tree: utils.tree.TreeNode<generated.Collection | null>;
-		raindropClient: client.Raindrop;
+		raindropClient: Raindrop;
 	}) {
 		const collectionId = opts.tree.data?._id ?? -1;
 		const raindrops = await opts.raindropClient.raindrop.getAllRaindrops(collectionId);
