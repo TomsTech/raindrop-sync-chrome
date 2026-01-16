@@ -1,4 +1,5 @@
 import { NodeData } from '~/lib/sync/tree';
+import { faker } from '@faker-js/faker';
 
 // NodeData implementation for testing
 export class TestNodeData extends NodeData {
@@ -10,17 +11,17 @@ export class TestNodeData extends NodeData {
 
 	constructor(props: {
 		id: string;
-		parentId: string | null;
-		name: string;
-		url: string | null;
-		isFolder: boolean;
+		parentId?: string | null;
+		name?: string;
+		url?: string | null;
+		isFolder?: boolean;
 	}) {
 		super();
 		this._id = props.id;
-		this._parentId = props.parentId;
-		this._name = props.name;
-		this._url = props.url;
-		this._isFolder = props.isFolder;
+		this._parentId = props.parentId ?? null;
+		this._name = props.name ?? faker.lorem.word();
+		this._url = props.url ?? null;
+		this._isFolder = props.isFolder ?? false;
 	}
 
 	getId(): string {
