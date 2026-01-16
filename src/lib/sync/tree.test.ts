@@ -1,49 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Path } from '~/lib/util/path';
 import { NodeData, PathConflictError, TreeNode } from './tree';
-
-// NodeData implementation for testing
-class TestNodeData extends NodeData {
-	private _id: string;
-	private _parentId: string | null;
-	private _name: string;
-	private _url: string | null;
-	private _isFolder: boolean;
-
-	constructor(props: {
-		id: string;
-		parentId: string | null;
-		name: string;
-		url: string | null;
-		isFolder: boolean;
-	}) {
-		super();
-		this._id = props.id;
-		this._parentId = props.parentId;
-		this._name = props.name;
-		this._url = props.url;
-		this._isFolder = props.isFolder;
-	}
-
-	getId(): string {
-		return this._id;
-	}
-	getParentId(): string | null {
-		return this._parentId;
-	}
-	getHash(): string {
-		return this._id;
-	}
-	getName(): string {
-		return this._name;
-	}
-	getUrl(): string | null {
-		return this._url;
-	}
-	isFolder(): boolean {
-		return this._isFolder;
-	}
-}
+import { TestNodeData } from '@test-helpers/tree';
 
 describe('NodeData', () => {
 	it('should return correct properties', () => {

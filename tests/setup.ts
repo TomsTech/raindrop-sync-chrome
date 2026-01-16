@@ -1,5 +1,6 @@
 import { cleanup } from '@testing-library/svelte';
 import { afterEach, beforeAll, vi } from 'vitest';
+import { mocks as chromeBookmarkMocks } from '@test-helpers/chrome-bookmarks';
 
 beforeAll(() => {
 	// Tried to use both sinon-chrome and vitest-chrome, but it seems both are not being
@@ -11,12 +12,7 @@ beforeAll(() => {
 		// vi.mocked(chrome.bookmarks.getSubTree).mockImplementationOnce(...)
 		//
 		bookmarks: {
-			getTree: vi.fn(),
-			getSubTree: vi.fn(),
-			create: vi.fn(),
-			remove: vi.fn(),
-			removeTree: vi.fn(),
-			update: vi.fn()
+			...chromeBookmarkMocks
 		},
 		identity: {
 			getRedirectURL: vi.fn(),

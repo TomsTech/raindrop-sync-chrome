@@ -4,50 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it } from 'vitest';
 import { NodeData, TreeNode } from '~/lib/sync/tree';
 import Tree from './Tree.svelte';
-
-// NodeData implementation for testing
-// NOTE: Copied from src/lib/sync/tree.test.ts; if need to copy once more, refactor to a common test utils file.
-class TestNodeData extends NodeData {
-	private _id: string;
-	private _parentId: string | null;
-	private _name: string;
-	private _url: string | null;
-	private _isFolder: boolean;
-
-	constructor(props: {
-		id: string;
-		parentId: string | null;
-		name: string;
-		url: string | null;
-		isFolder: boolean;
-	}) {
-		super();
-		this._id = props.id;
-		this._parentId = props.parentId;
-		this._name = props.name;
-		this._url = props.url;
-		this._isFolder = props.isFolder;
-	}
-
-	getId(): string {
-		return this._id;
-	}
-	getParentId(): string | null {
-		return this._parentId;
-	}
-	getHash(): string {
-		return this._id;
-	}
-	getName(): string {
-		return this._name;
-	}
-	getUrl(): string | null {
-		return this._url;
-	}
-	isFolder(): boolean {
-		return this._isFolder;
-	}
-}
+import { TestNodeData } from '@test-helpers/tree';
 
 let rootData: NodeData;
 let exampleData: NodeData[];
