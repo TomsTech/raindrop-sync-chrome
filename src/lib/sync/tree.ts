@@ -140,10 +140,12 @@ export class TreeNode<D extends NodeData> {
 	}
 
 	addChild(child: TreeNode<D>) {
+		child.parent = this;
 		this.children.push(child);
 	}
 
 	removeChild(child: TreeNode<D>) {
+		child.parent = null;
 		this.children = this.children.filter((c) => c !== child);
 	}
 
