@@ -1,7 +1,7 @@
 import { client } from '@lasuillard/raindrop-client';
 import { get } from 'svelte/store';
 import type { AppSettings } from '~/config/settings';
-import { ChromeBookmarkRepository } from '~/lib/browser/chrome';
+import { ChromeBookmarkRepository, type BrowserBookmarkChange } from '~/lib/browser/chrome';
 import type { SyncEvent, SyncEventListener } from './event-listener';
 import {
 	SyncEventComplete,
@@ -12,6 +12,7 @@ import {
 
 /**
  * Manages synchronization between Raindrop.io and browser bookmarks.
+ * Supports incremental sync and bidirectional sync.
  */
 export class SyncManager {
 	appSettings: AppSettings;
@@ -19,6 +20,9 @@ export class SyncManager {
 	repository: ChromeBookmarkRepository;
 
 	private listeners: SyncEventListener[] = [];
+	private bidirectionalEnabled = false;
+	private pendingBrowserChanges: BrowserBookmarkChange[] = [];
+	private browserChangeBatchTimeout: NodeJS.Timeout | null = null;
 
 	/**
 	 * Create a new SyncManager.
@@ -128,7 +132,10 @@ export class SyncManager {
 		return serverLastUpdate > lastSync;
 	}
 
-	protected async performSync() {
+	/**
+	 * Perform sync - uses incremental sync by default.
+	 */
+	protected async performSync(opts?: { fullSync?: boolean }) {
 		console.debug('Performing synchronization process');
 
 		// Fetch the collection tree from Raindrop.io
@@ -141,19 +148,32 @@ export class SyncManager {
 		const syncFolder = await this.repository.getFolderById(syncFolderId);
 		console.debug(`Sync folder found: ${syncFolder.title} (${syncFolder.id})`);
 
-		// Clear existing bookmarks in the sync folder
-		console.debug('Clearing existing bookmarks in sync folder');
-		this.emitEvent(new SyncEventProgress('clearing-bookmarks'));
-		await this.repository.clearAllBookmarksInFolder(syncFolder);
+		if (opts?.fullSync) {
+			// Full sync: clear and recreate everything
+			console.debug('Performing FULL sync (clearing existing bookmarks)');
+			this.emitEvent(new SyncEventProgress('clearing-bookmarks'));
+			await this.repository.clearAllBookmarksInFolder(syncFolder);
 
-		// Create bookmarks recursively based on the Raindrop.io collection tree
-		console.debug('Creating bookmarks from Raindrop.io collections');
-		this.emitEvent(new SyncEventProgress('creating-bookmarks'));
-		await this.repository.createBookmarksRecursively({
-			baseFolder: syncFolder,
-			tree: treeNode,
-			raindropClient: this.raindropClient
-		});
+			console.debug('Creating bookmarks from Raindrop.io collections');
+			this.emitEvent(new SyncEventProgress('creating-bookmarks'));
+			await this.repository.createBookmarksRecursively({
+				baseFolder: syncFolder,
+				tree: treeNode,
+				raindropClient: this.raindropClient,
+				includeUnsorted: true
+			});
+		} else {
+			// Incremental sync: only update changes
+			console.debug('Performing INCREMENTAL sync');
+			this.emitEvent(new SyncEventProgress('syncing-changes'));
+			const stats = await this.repository.incrementalSync({
+				baseFolder: syncFolder,
+				tree: treeNode,
+				raindropClient: this.raindropClient,
+				includeUnsorted: true
+			});
+			console.info(`Incremental sync completed: +${stats.added} ~${stats.updated} -${stats.deleted} =${stats.unchanged}`);
+		}
 
 		// Update last sync time
 		const lastSyncTime = new Date();
@@ -165,11 +185,13 @@ export class SyncManager {
 	 * Start the synchronization process.
 	 * @param opts Options for starting sync.
 	 * @param opts.force Whether to force sync regardless of checks. Default is false.
+	 * @param opts.fullSync Whether to do a full sync (clear and recreate). Default is false.
 	 * @param opts.thresholdSeconds Threshold in seconds to determine if sync is needed.
 	 *  Ignored if force is true. Default is 300 seconds (5 minutes).
 	 */
-	async startSync(opts?: { force?: boolean; thresholdSeconds?: number }) {
+	async startSync(opts?: { force?: boolean; fullSync?: boolean; thresholdSeconds?: number }) {
 		const force = opts?.force ?? false;
+		const fullSync = opts?.fullSync ?? false;
 		const thresholdSeconds = opts?.thresholdSeconds ?? 300;
 		let shouldSync: boolean;
 
@@ -184,7 +206,7 @@ export class SyncManager {
 			}
 
 			if (shouldSync) {
-				await this.performSync();
+				await this.performSync({ fullSync });
 			} else {
 				console.info('No synchronization needed at this time');
 			}
@@ -222,5 +244,162 @@ export class SyncManager {
 
 		console.debug(`Scheduling alarms with delay: ${delayInMinutes}, period: ${periodInMinutes}`);
 		await chrome.alarms.create('sync-bookmarks', { delayInMinutes, periodInMinutes });
+	}
+
+	// ==================== BIDIRECTIONAL SYNC ====================
+
+	/**
+	 * Enable bidirectional sync - browser changes sync back to Raindrop.
+	 */
+	enableBidirectionalSync(): void {
+		if (this.bidirectionalEnabled) {
+			console.debug('Bidirectional sync already enabled');
+			return;
+		}
+
+		this.repository.startBrowserChangeListener((change) => {
+			this.handleBrowserChange(change);
+		});
+
+		this.bidirectionalEnabled = true;
+		console.info('Bidirectional sync enabled');
+	}
+
+	/**
+	 * Disable bidirectional sync.
+	 */
+	disableBidirectionalSync(): void {
+		if (!this.bidirectionalEnabled) return;
+
+		this.repository.stopBrowserChangeListener();
+		this.bidirectionalEnabled = false;
+
+		if (this.browserChangeBatchTimeout) {
+			clearTimeout(this.browserChangeBatchTimeout);
+			this.browserChangeBatchTimeout = null;
+		}
+
+		console.info('Bidirectional sync disabled');
+	}
+
+	/**
+	 * Handle a browser bookmark change.
+	 * Batches changes to avoid excessive API calls.
+	 */
+	private handleBrowserChange(change: BrowserBookmarkChange): void {
+		console.debug('Browser bookmark change detected:', change.type);
+		this.pendingBrowserChanges.push(change);
+
+		// Batch changes - wait 2 seconds for more changes before processing
+		if (this.browserChangeBatchTimeout) {
+			clearTimeout(this.browserChangeBatchTimeout);
+		}
+
+		this.browserChangeBatchTimeout = setTimeout(() => {
+			this.processBrowserChanges();
+		}, 2000);
+	}
+
+	/**
+	 * Process pending browser changes and sync to Raindrop.
+	 */
+	private async processBrowserChanges(): Promise<void> {
+		const changes = [...this.pendingBrowserChanges];
+		this.pendingBrowserChanges = [];
+
+		if (changes.length === 0) return;
+
+		console.debug(`Processing ${changes.length} browser changes`);
+
+		for (const change of changes) {
+			try {
+				await this.syncBrowserChangeToRaindrop(change);
+			} catch (e) {
+				console.error('Failed to sync browser change to Raindrop:', e);
+			}
+		}
+	}
+
+	/**
+	 * Sync a single browser change to Raindrop.
+	 */
+	private async syncBrowserChangeToRaindrop(change: BrowserBookmarkChange): Promise<void> {
+		switch (change.type) {
+			case 'created': {
+				if (!change.bookmark.url) return;
+
+				// Get the collection ID for the parent folder
+				const collectionId = change.bookmark.parentId
+					? await this.repository.getCollectionIdForFolder(change.bookmark.parentId)
+					: -1;
+
+				console.debug(`Creating raindrop in collection ${collectionId}: ${change.bookmark.title}`);
+
+				await this.raindropClient.raindrop.createRaindrop({
+					link: change.bookmark.url,
+					title: change.bookmark.title,
+					collection: collectionId ? { $id: collectionId } : undefined
+				});
+				break;
+			}
+
+			case 'removed': {
+				// We need to find the raindrop by URL from our state
+				// Unfortunately, removeInfo doesn't include the URL
+				// This is a limitation - we'd need to track bookmark IDs to URLs
+				console.debug('Bookmark removed - Raindrop deletion not implemented yet');
+				break;
+			}
+
+			case 'changed': {
+				// Get the bookmark to find its URL
+				try {
+					const [bookmark] = await chrome.bookmarks.get(change.id);
+					if (!bookmark?.url) return;
+
+					const raindropId = await this.repository.getRaindropIdForUrl(bookmark.url);
+					if (!raindropId) {
+						console.debug('No raindrop ID found for changed bookmark');
+						return;
+					}
+
+					console.debug(`Updating raindrop ${raindropId}: ${change.changeInfo.title}`);
+
+					await this.raindropClient.raindrop.updateRaindrop(raindropId, {
+						title: change.changeInfo.title
+					});
+				} catch (e) {
+					console.warn('Failed to get bookmark for change:', e);
+				}
+				break;
+			}
+
+			case 'moved': {
+				// Get the bookmark and new parent collection
+				try {
+					const [bookmark] = await chrome.bookmarks.get(change.id);
+					if (!bookmark?.url) return;
+
+					const raindropId = await this.repository.getRaindropIdForUrl(bookmark.url);
+					const newCollectionId = await this.repository.getCollectionIdForFolder(
+						change.moveInfo.parentId
+					);
+
+					if (!raindropId || newCollectionId === null) {
+						console.debug('Cannot determine move target');
+						return;
+					}
+
+					console.debug(`Moving raindrop ${raindropId} to collection ${newCollectionId}`);
+
+					await this.raindropClient.raindrop.updateRaindrop(raindropId, {
+						collection: { $id: newCollectionId }
+					});
+				} catch (e) {
+					console.warn('Failed to process bookmark move:', e);
+				}
+				break;
+			}
+		}
 	}
 }
