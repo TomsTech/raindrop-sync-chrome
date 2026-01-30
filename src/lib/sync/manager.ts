@@ -66,7 +66,8 @@ export class SyncManager {
 		this.emitEvent(new SyncEventProgress('validating'));
 
 		// Verify that access token is set
-		if (!this.appSettings.accessToken) {
+		const accessToken = get(this.appSettings.accessToken);
+		if (!accessToken) {
 			throw new Error('Access token is not set. Please configure your Raindrop.io access token.');
 		}
 
